@@ -116,7 +116,10 @@ namespace OpenRA.Server
 				t.GameEnded(this);
 		}
 
-		public Server(IPEndPoint endpoint, ServerSettings settings, ModData modData, bool dedicated)
+		public Server(IPEndPoint endpoint, ServerSettings settings, ModData modData, bool dedicated) : this(endpoint, settings, modData, dedicated, new TypeDictionary())
+		{ }
+
+		public Server(IPEndPoint endpoint, ServerSettings settings, ModData modData, bool dedicated, TypeDictionary extraServerTraits)
 		{
 			Log.AddChannel("server", "server.log");
 
@@ -140,6 +143,8 @@ namespace OpenRA.Server
 
 			foreach (var trait in modData.Manifest.ServerTraits)
 				serverTraits.Add(modData.ObjectCreator.CreateObject<ServerTrait>(trait));
+			foreach (var trait in extraServerTraits)
+				serverTraits.Add(trait);
 
 			LobbyInfo = new Session
 			{
