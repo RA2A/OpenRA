@@ -328,7 +328,7 @@ windows-dependencies:
 osx-dependencies: cli-dependencies
 	@./thirdparty/fetch-thirdparty-deps-osx.sh
 	@ $(CP_R) thirdparty/download/osx/*.dylib .
-	@ $(CP_R) thirdparty/download/osx/*.dll.config .
+#	@ $(CP_R) thirdparty/download/osx/*.dll.config .
 
 dependencies: $(os-dependencies)
 	@./thirdparty/fetch-geoip-db.sh

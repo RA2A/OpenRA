@@ -14,7 +14,8 @@ if [ ! -f liblua.5.1.dylib ]; then
 	curl -LOs https://raw.githubusercontent.com/OpenRA/OpenRALauncherOSX/master/dependencies/liblua.5.1.dylib
 fi
 
-if [ ! -f Eluant.dll.config ]; then
-	echo "Fetching OS X Lua configuration file from GitHub."
-	curl -LOs https://raw.githubusercontent.com/OpenRA/OpenRALauncherOSX/master/dependencies/Eluant.dll.config
-fi
+# Already done by linux build
+#if [ ! -f Eluant.dll.config ]; then
+#	echo "Fetching OS X Lua configuration file from GitHub."
+#	curl -LOs https://raw.githubusercontent.com/OpenRA/OpenRALauncherOSX/master/dependencies/Eluant.dll.config
+#fi
