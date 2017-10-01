@@ -146,6 +146,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			orderManager.AddChatLine += AddChatLineWrapper;
 			Game.BeforeGameStart += UnregisterEvents;
 
+			CloseChat();
 			chatText.IsDisabled = () => world.IsReplay && !Game.Settings.Debug.EnableDebugCommandsInReplays;
 
 			if (!isMenuChat)

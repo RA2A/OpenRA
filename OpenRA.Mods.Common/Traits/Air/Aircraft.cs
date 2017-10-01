@@ -114,6 +114,11 @@ namespace OpenRA.Mods.Common.Traits
 		public int GetInitialFacing() { return InitialFacing; }
 		public WDist GetCruiseAltitude() { return CruiseAltitude; }
 
+		[ConsumedConditionReference]
+		[Desc("Under this condition, this actor may turn even while this trait is disabled.",
+			"Useful for turretless units that deploy to become immobile, but still fires its weapon.")]
+		public readonly BooleanExpression TurnWhileDisabledCondition = null;
+
 		public virtual object Create(ActorInitializer init) { return new Aircraft(init, this); }
 
 		IEnumerable<object> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
@@ -160,6 +165,7 @@ namespace OpenRA.Mods.Common.Traits
 		ConditionManager conditionManager;
 		IDisposable reservation;
 		IEnumerable<int> speedModifiers;
+		bool turnWhileDisabled = false;
 
 		[Sync] public int Facing { get; set; }
 		[Sync] public WPos CenterPosition { get; private set; }
@@ -179,6 +185,7 @@ namespace OpenRA.Mods.Common.Traits
 		bool isMovingVertically;
 		WPos cachedPosition;
 		bool? landNow;
+		DockClient dockClient;
 
 		public Aircraft(ActorInitializer init, AircraftInfo info)
 		{
@@ -198,6 +205,9 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			if (Info.LandOnCondition != null)
 				yield return new VariableObserver(ForceLandConditionChanged, Info.LandOnCondition.Variables);
+
+			if (Info.TurnWhileDisabledCondition != null)
+				yield return new VariableObserver(TurnWhileDisabledConditionChanged, Info.TurnWhileDisabledCondition.Variables);
 		}
 
 		void ForceLandConditionChanged(Actor self, IReadOnlyDictionary<string, int> variables)
@@ -215,6 +225,7 @@ namespace OpenRA.Mods.Common.Traits
 			conditionManager = self.TraitOrDefault<ConditionManager>();
 			speedModifiers = self.TraitsImplementing<ISpeedModifier>().ToArray().Select(sm => sm.GetSpeedModifier());
 			cachedPosition = self.CenterPosition;
+			dockClient = self.TraitOrDefault<DockClient>(); // Not all are dockers.
 		}
 
 		void INotifyAddedToWorld.AddedToWorld(Actor self)
@@ -264,7 +275,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				ReserveSpawnBuilding();
 
-				var host = GetActorBelow();
+				var host = GetSupplierActorBelow();
 				if (host == null)
 					return;
 
@@ -322,9 +333,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (!Info.Repulsable)
 				return WVec.Zero;
 
-			if (reservation != null)
+			if (dockClient != null && dockClient.CurrentDock != null)
 			{
-				var distanceFromReservationActor = (ReservedActor.CenterPosition - self.CenterPosition).HorizontalLength;
+				var distanceFromReservationActor = (dockClient.CurrentDock.CenterPosition - self.CenterPosition).HorizontalLength;
 				if (distanceFromReservationActor < Info.WaitDistanceFromResupplyBase.Length)
 					return WVec.Zero;
 			}
@@ -392,7 +403,7 @@ namespace OpenRA.Mods.Common.Traits
 			return (d * 1024 * 8) / (int)distSq;
 		}
 
-		public Actor GetActorBelow()
+		public Actor GetSupplierActorBelow()
 		{
 			// Map.DistanceAboveTerrain(WPos pos) is called directly because Aircraft is an IPositionable trait
 			// and all calls occur in Tick methods.
@@ -400,13 +411,13 @@ namespace OpenRA.Mods.Common.Traits
 				return null; // not on the ground.
 
 			return self.World.ActorMap.GetActorsAt(self.Location)
-				.FirstOrDefault(a => a.Info.HasTraitInfo<ReservableInfo>());
+				.FirstOrDefault(a => Info.RearmBuildings.Contains(a.Info.Name) || Info.RepairBuildings.Contains(a.Info.Name));
 		}
 
 		protected void ReserveSpawnBuilding()
 		{
 			// HACK: Not spawning in the air, so try to associate with our spawner.
-			var spawner = GetActorBelow();
+			var spawner = GetSupplierActorBelow();
 			if (spawner == null)
 				return;
 
@@ -638,6 +649,11 @@ namespace OpenRA.Mods.Common.Traits
 			return true;
 		}
 
+		bool IMove.TurnWhileDisabled(Actor self)
+		{
+			return turnWhileDisabled;
+		}
+
 		#endregion
 
 		#region Implement order interfaces
@@ -705,8 +721,8 @@ namespace OpenRA.Mods.Common.Traits
 			}
 			else if (order.OrderString == "Enter")
 			{
-				if (!order.Queued)
-					UnReserve();
+				// Let go first.
+				dockClient.Release();
 
 				if (Reservable.IsReserved(order.TargetActor))
 				{
@@ -743,11 +759,16 @@ namespace OpenRA.Mods.Common.Traits
 						self.QueueActivity(order.Queued, new CallFunc(enter));
 					}
 				}
+
+				// for planes, do...
+				if (!order.Queued)
+					self.CancelActivity();
+				self.QueueActivity(new ReturnToBase(self, Info.AbortOnResupply, order.TargetActor));
 			}
 			else if (order.OrderString == "Stop")
 			{
 				self.CancelActivity();
-				if (GetActorBelow() != null)
+				if (GetSupplierActorBelow() != null)
 				{
 					self.QueueActivity(new ResupplyAircraft(self));
 					return;
@@ -833,6 +854,12 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			if (!inits.Contains<DynamicFacingInit>() && !inits.Contains<FacingInit>())
 				inits.Add(new DynamicFacingInit(() => Facing));
+		}
+
+		void TurnWhileDisabledConditionChanged(Actor self, IReadOnlyDictionary<string, int> conditions)
+		{
+			if (Info.TurnWhileDisabledCondition != null)
+				turnWhileDisabled = Info.TurnWhileDisabledCondition.Evaluate(conditions);
 		}
 	}
 }

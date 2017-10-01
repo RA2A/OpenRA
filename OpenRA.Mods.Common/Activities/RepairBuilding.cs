@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System.Linq;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
@@ -18,13 +19,13 @@ namespace OpenRA.Mods.Common.Activities
 	{
 		readonly Actor target;
 		readonly Health health;
-		readonly Stance validStances;
+		readonly EngineerRepairInfo repairInfo;
 
-		public RepairBuilding(Actor self, Actor target, EnterBehaviour enterBehaviour, Stance validStances)
-			: base(self, target, enterBehaviour)
+		public RepairBuilding(Actor self, Actor target, EngineerRepairInfo repairInfo)
+			: base(self, target, repairInfo.EnterBehaviour, WDist.Zero)
 		{
 			this.target = target;
-			this.validStances = validStances;
+			this.repairInfo = repairInfo;
 			health = target.Trait<Health>();
 		}
 
@@ -36,7 +37,7 @@ namespace OpenRA.Mods.Common.Activities
 		protected override void OnInside(Actor self)
 		{
 			var stance = self.Owner.Stances[target.Owner];
-			if (!stance.HasStance(validStances))
+			if (!stance.HasStance(repairInfo.ValidStances))
 				return;
 
 			if (health.DamageState == DamageState.Undamaged)

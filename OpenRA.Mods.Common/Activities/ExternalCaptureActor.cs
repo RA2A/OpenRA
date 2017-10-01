@@ -36,7 +36,10 @@ namespace OpenRA.Mods.Common.Activities
 
 		public override Activity Tick(Actor self)
 		{
-			if (IsCanceled || !self.IsInWorld || self.IsDead || target.Type != TargetType.Actor || !target.IsValidFor(self))
+			if (target.Type != TargetType.Actor)
+				return NextActivity;
+
+			if (IsCanceled || !self.IsInWorld || self.IsDead || !target.IsValidFor(self) || capturable.IsTraitDisabled)
 			{
 				EndCapture(self);
 				return NextActivity;

@@ -2,6 +2,7 @@
 Release
 bin
 obj
+*.obj
 *.ncb
 *.vcproj*
 *.suo
@@ -81,6 +82,9 @@ StyleCopViolations.xml
 
 # Support directory
 /Support
+/da/Microsoft.Build.Utilities.v3.5.resources.dll
+/da
 
 #Attacque Supérior
 /mods/as/
+

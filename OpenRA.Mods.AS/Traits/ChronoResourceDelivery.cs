@@ -72,18 +72,20 @@ namespace OpenRA.Mods.AS.Traits
 				ticksTillCheck--;
 		}
 
-		public void MovingToResources(Actor self, CPos targetCell, Activity next)
+		public Activity MovingToResources(Actor self, CPos targetCell, Activity next)
 		{
 			Reset();
+			return nextActivity;
 		}
 
-		public void MovingToRefinery(Actor self, CPos targetCell, Activity next)
+		public Activity MovingToRefinery(Actor self, CPos targetCell, Activity next)
 		{
 			if (destination != null && destination.Value != targetCell)
 				ticksTillCheck = 0;
 
 			destination = targetCell;
 			nextActivity = next;
+			return nextActivity;
 		}
 
 		public void MovementCancelled(Actor self)
